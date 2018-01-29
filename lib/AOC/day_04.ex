@@ -29,6 +29,23 @@ defmodule AOC.Day04 do
       calculate_checksum(encrypted_name) == checksum
     end
 
+    def decrypt_name(encrypted_name, shift_amount) do
+      encrypted_name
+      |> String.to_charlist()
+      |> Enum.map(&shift_letter(&1, shift_amount))
+      |> List.to_string()
+    end
+
+    defp shift_letter(?-, _shift_amount), do: " "
+
+    defp shift_letter(letter, shift_amount) do
+      shifted =
+        (letter - ?a + shift_amount)
+        |> rem(26)
+
+      shifted + ?a
+    end
+
     def calculate_checksum(encrypted_name) do
       encrypted_name
       |> String.codepoints()
@@ -47,5 +64,13 @@ defmodule AOC.Day04 do
     input
     |> Parse.parse_input()
     |> Solve.sum_valid_sector_ids()
+  end
+
+  def solve_4b(input) do
+    input
+    |> Parse.parse_input()
+    |> Enum.find_value(fn {e, s, _c} ->
+      if e |> Solve.decrypt_name(s) |> String.match?(~r/object storage/), do: s
+    end)
   end
 end
