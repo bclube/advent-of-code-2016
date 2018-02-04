@@ -6,15 +6,17 @@ defmodule AOC.Day07 do
 
     defp contains_abba_pattern?(s), do: Regex.match?(~r/(.)(?!\1)(.)\2\1/, s)
 
+    @bracketed_regex ~r/\[([^\[]*)\]/
+
     defp has_abba_within_brackets?(ip_address) do
-      Regex.scan(~r/\[([^\]]*)\]/, ip_address, capture: :all_but_first)
+      Regex.scan(@bracketed_regex, ip_address, capture: :all_but_first)
       |> Stream.concat()
       |> Enum.any?(&contains_abba_pattern?/1)
     end
 
     defp has_abba_outside_of_brackets?(ip_address) do
-      Regex.scan(~r/(?:^|\])([^\[]*)(?:$|\[)/, ip_address, capture: :all_but_first)
-      |> Stream.concat()
+      ip_address
+      |> String.split(@bracketed_regex)
       |> Enum.any?(&contains_abba_pattern?/1)
     end
   end
