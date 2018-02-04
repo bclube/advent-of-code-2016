@@ -25,7 +25,9 @@ defmodule AOC.Day05 do
     |> Stream.flat_map(fn
       <<0::size(20), sixth_char::size(4), seventh_char::size(4), _::size(4), _rest::binary>> ->
         [%{sixth_char: sixth_char, seventh_char: seventh_char}]
-      _ -> []
+
+      _ ->
+        []
     end)
   end
 
