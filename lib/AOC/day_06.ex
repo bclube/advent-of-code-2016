@@ -2,7 +2,7 @@ defmodule AOC.Day06 do
   defp solve_day_6(input, select_fn) do
     input
     |> String.split()
-    |> Stream.map(&String.codepoints/1)
+    |> Enum.map(&String.codepoints/1)
     |> Stream.zip()
     |> Stream.map(&Tuple.to_list/1)
     |> Stream.map(&get_result_char(&1, select_fn))
