@@ -1,28 +1,31 @@
 defmodule AOC.Day09 do
   defmodule Solve do
-    def decompress(file), do: Stream.unfold(file, &decompress_one/1) |> Enum.join()
+    def decompressed_length(input, :single_pass), do: count_decompressed_length(input, true)
+    def decompressed_length(input), do: count_decompressed_length(input, false)
 
-    defp decompress_one(""), do: nil
+    defp count_decompressed_length("", _single_pass?), do: 0
 
-    defp decompress_one(file) do
+    defp count_decompressed_length(file, single_pass?) do
       case Regex.run(~r/^([^\(]*)(?:\((\d+)x(\d+)\)(.*))?$/, file, capture: :all_but_first) do
         [chars, n_chars, replications, rest] ->
           n_chars = String.to_integer(n_chars)
           replications = String.to_integer(replications)
           {seg, rest} = String.split_at(rest, n_chars)
-          repeats = for _ <- 1..replications, do: seg
-          {[chars, repeats], rest}
+
+          if not single_pass?,
+            do:
+              String.length(chars) + replications * count_decompressed_length(seg, single_pass?) +
+                count_decompressed_length(rest, single_pass?),
+            else:
+              String.length(chars) + replications * String.length(seg) +
+                count_decompressed_length(rest, single_pass?)
 
         [chars] ->
-          {chars, ""}
+          String.length(chars)
       end
     end
-
-    def count_iolist_chars(io_list) when is_binary(io_list), do: String.length(io_list)
-
-    def count_iolist_chars(io_list) when is_list(io_list),
-      do: Stream.map(io_list, &count_iolist_chars/1) |> Enum.sum()
   end
 
-  def solve_9a(input), do: Solve.decompress(input) |> Solve.count_iolist_chars()
+  def solve_9a(input), do: Solve.decompressed_length(input, :single_pass)
+  def solve_9b(input), do: Solve.decompressed_length(input)
 end
