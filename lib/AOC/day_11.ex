@@ -1,92 +1,220 @@
 defmodule AOC.Day11 do
+  use Bitwise
+
+  defmodule State do
+    @vals %{
+      cobalt: 1 <<< 0,
+      dilithium: 1 <<< 1,
+      elerium: 1 <<< 2,
+      polonium: 1 <<< 3,
+      promethium: 1 <<< 4,
+      ruthenium: 1 <<< 5,
+      thulium: 1 <<< 6
+    }
+
+    def empty_floor, do: <<0::16>>
+
+    def floor(generators, microchips) do
+      gen = construct(generators)
+      mic = construct(microchips)
+
+      <<gen::8, mic::8>>
+    end
+
+    defp construct(elements) do
+      elements
+      |> Stream.map(&Map.fetch!(@vals, &1))
+      |> Enum.reduce(0, &bor/2)
+    end
+  end
+
   defmodule Rules do
-    def win?(state) do
-      state.loc == 4 &&
-        1..3
-        |> Stream.map(&Map.get(state, &1))
-        |> Enum.all?(&Enum.empty?(&1))
-    end
+    def win?(<<4::8, x::8, x::8, 0::48>>), do: true
+    def win?(_), do: false
 
-    def valid_state?(state) do
-      1..4
-      |> Stream.map(&Map.get(state, &1))
-      |> Enum.all?(&valid_floor?/1)
-    end
+    def valid_floor?(floor) do
+      case <<floor::16>> do
+        <<0::8, _microchips::8>> ->
+          true
 
-    def valid_floor?(items) do
-      not has_generator(items) || not has_unpaired_microchip(items)
-    end
-
-    defp has_generator(items) do
-      items
-      |> Stream.map(&elem(&1, 1))
-      |> Enum.any?(&match?(:generator, &1))
-    end
-
-    defp has_unpaired_microchip(items) do
-      items
-      |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
-      |> Map.values()
-      |> Enum.any?(&match?([:microchip], &1))
+        <<generators::8, microchips::8>> ->
+          0 == (microchips ^^^ generators &&& microchips)
+      end
     end
   end
 
   defp start_state do
-    %{
-      :loc => 1,
-      4 => MapSet.new(),
-      3 => MapSet.new(),
-      2 =>
-        MapSet.new([
-          {:polonium, :microchip},
-          {:promethium, :microchip}
-        ]),
-      1 =>
-        MapSet.new([
-          {:cobalt, :generator},
-          {:cobalt, :microchip},
-          {:polonium, :generator},
-          {:promethium, :generator},
-          {:ruthenium, :generator},
-          {:ruthenium, :microchip},
-          {:thulium, :generator},
-          {:thulium, :microchip}
-        ])
-    }
+    loc = 1
+    floor4 = State.empty_floor()
+    floor3 = State.empty_floor()
+
+    floor2 =
+      State.floor([], [
+        :polonium,
+        :promethium
+      ])
+
+    floor1 =
+      State.floor(
+        [
+          :cobalt,
+          :polonium,
+          :promethium,
+          :ruthenium,
+          :thulium
+        ],
+        [
+          :cobalt,
+          :ruthenium,
+          :thulium
+        ]
+      )
+
+    <<loc::8>> <> floor4 <> floor3 <> floor2 <> floor1
   end
 
-  def next(loc) do
-    Enum.filter([loc + 1, loc - 1], fn v -> v in 1..4 end)
+  defp start_state_b do
+    loc = 1
+    floor4 = State.empty_floor()
+    floor3 = State.empty_floor()
+
+    floor2 =
+      State.floor([], [
+        :polonium,
+        :promethium
+      ])
+
+    floor1 =
+      State.floor(
+        [
+          :cobalt,
+          :dilithium,
+          :elerium,
+          :polonium,
+          :promethium,
+          :ruthenium,
+          :thulium
+        ],
+        [
+          :cobalt,
+          :dilithium,
+          :elerium,
+          :ruthenium,
+          :thulium
+        ]
+      )
+
+    <<loc::8>> <> floor4 <> floor3 <> floor2 <> floor1
   end
 
-  def combinations(floor) do
-    floor
-    |> MapSet.to_list()
-    |> Stream.iterate(&Enum.drop(&1, 1))
-    |> Stream.take_while(fn l -> not Enum.empty?(l) end)
-    |> Stream.flat_map(fn [v | vs] ->
-      Stream.map(vs, fn v2 -> [v, v2] end)
-    end)
-    |> Stream.filter(&Rules.valid_floor?/1)
-    |> Stream.concat(MapSet.to_list(floor) |> Stream.map(&List.wrap/1))
-    |> Stream.map(&MapSet.new/1)
+  def next(1), do: [2]
+  def next(2), do: [3, 1]
+  def next(3), do: [4, 2]
+  def next(4), do: [3]
+
+  def combinations(<<generators::8, microchips::8>>) do
+    bits = Enum.map(0..7, &bsl(1, &1))
+    both = generators &&& microchips
+
+    gen_bits =
+      bits
+      |> Stream.map(&band(generators, &1))
+      |> Enum.reject(&(&1 == 0))
+
+    micro_bits =
+      bits
+      |> Stream.map(&band(microchips, &1))
+      |> Enum.reject(&(&1 == 0))
+
+    gen_micro =
+      bits
+      |> Stream.map(&band(both, &1))
+      |> Stream.reject(&(&1 == 0))
+      |> Stream.map(fn v ->
+        <<vv::16>> = <<v::8, v::8>>
+        vv
+      end)
+
+    two_gen =
+      gen_bits
+      |> Stream.iterate(&Enum.drop(&1, 1))
+      |> Stream.take_while(fn l -> not Enum.empty?(l) end)
+      |> Stream.flat_map(fn [v | vs] ->
+        Stream.map(vs, fn v2 ->
+          combined = v ||| v2
+          <<vv::16>> = <<combined::8, 0::8>>
+          vv
+        end)
+      end)
+
+    two_micro =
+      micro_bits
+      |> Stream.iterate(&Enum.drop(&1, 1))
+      |> Stream.take_while(fn l -> not Enum.empty?(l) end)
+      |> Stream.flat_map(fn [v | vs] ->
+        Stream.map(vs, fn v2 ->
+          combined = v ||| v2
+          <<vv::16>> = <<0::8, combined::8>>
+          vv
+        end)
+      end)
+
+    one_gen =
+      gen_bits
+      |> Stream.map(fn v ->
+        <<vv::16>> = <<v::8, 0::8>>
+        vv
+      end)
+
+    one_micro =
+      micro_bits
+      |> Stream.map(fn v ->
+        <<vv::16>> = <<0::8, v::8>>
+        vv
+      end)
+
+    Enum.concat([
+      gen_micro,
+      two_gen,
+      two_micro,
+      one_gen,
+      one_micro
+    ])
   end
 
-  def next_moves(state) do
-    loc = state.loc
-    floor = Map.get(state, loc)
+  def get_floor(1, floor1, _f2, _f3, _f4), do: floor1
+  def get_floor(2, _f1, floor2, _f3, _f4), do: floor2
+  def get_floor(3, _f1, _f2, floor3, _f4), do: floor3
+  def get_floor(4, _f1, _f2, _f3, floor4), do: floor4
+
+  def update_floor(<<_loc::8, floor4::16, floor3::16, floor2::16, _floor1::16>>, 1, floor),
+    do: <<1::8, floor4::16, floor3::16, floor2::16, floor::16>>
+
+  def update_floor(<<_loc::8, floor4::16, floor3::16, _floor2::16, floor1::16>>, 2, floor),
+    do: <<2::8, floor4::16, floor3::16, floor::16, floor1::16>>
+
+  def update_floor(<<_loc::8, floor4::16, _floor3::16, floor2::16, floor1::16>>, 3, floor),
+    do: <<3::8, floor4::16, floor::16, floor2::16, floor1::16>>
+
+  def update_floor(<<_loc::8, _floor4::16, floor3::16, floor2::16, floor1::16>>, 4, floor),
+    do: <<4::8, floor::16, floor3::16, floor2::16, floor1::16>>
+
+  def next_moves(<<loc::8, floor4::16, floor3::16, floor2::16, floor1::16>> = state) do
+    floor = get_floor(loc, floor1, floor2, floor3, floor4)
+    combos = combinations(<<floor::16>>)
     next_loc = next(loc)
 
-    for cargo <- combinations(floor),
-        n_loc <- next_loc,
-        from_floor = Map.get(state, loc) |> MapSet.difference(cargo),
+    for n_loc <- next_loc,
+        n_floor = get_floor(n_loc, floor1, floor2, floor3, floor4),
+        cargo <- combos,
+        from_floor = floor ^^^ cargo,
         Rules.valid_floor?(from_floor),
-        to_floor = Map.get(state, n_loc) |> MapSet.union(cargo),
+        to_floor = n_floor ||| cargo,
         Rules.valid_floor?(to_floor),
         do:
-          %{state | loc: n_loc}
-          |> Map.put(loc, from_floor)
-          |> Map.put(n_loc, to_floor)
+          state
+          |> update_floor(loc, from_floor)
+          |> update_floor(n_loc, to_floor)
   end
 
   defp solve_day_ll(state) do
@@ -121,5 +249,7 @@ defmodule AOC.Day11 do
     |> Enum.count()
   end
 
-  def solve_11a, do: start_state()  |> solve_day_ll()
+  def solve_11a, do: start_state() |> solve_day_ll()
+
+  def solve_11b, do: start_state_b() |> solve_day_ll()
 end
