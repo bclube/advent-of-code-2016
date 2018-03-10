@@ -64,7 +64,7 @@ defmodule AOC.Day12 do
       Regex.scan(~r/\S+/, rest)
       |> Enum.map(fn [v] -> try_parse_int(v) end)
       |> case do
-        [cmp, dist] when 0 == cmp and is_integer(dist) ->
+        [cmp, dist] when is_integer(cmp) and is_integer(dist) ->
           if cmp != 0,
             do: &XForm.jump(&1, dist),
             else: &XForm.identity/1
