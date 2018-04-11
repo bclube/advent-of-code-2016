@@ -36,6 +36,11 @@ defmodule AOC.Grid do
     def south, do: @next_row
     def east, do: @next_col
     def west, do: @prev_col
+
+    def up, do: @prev_row
+    def down, do: @next_row
+    def left, do: @prev_col
+    def right, do: @next_col
   end
 
   defmodule Turn do
