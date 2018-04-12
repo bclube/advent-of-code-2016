@@ -55,11 +55,12 @@ defmodule AOC.Day08 do
   end
 
   defp print_grid(coords, row_count, col_count) do
-    for r <- 0..(row_count - 1) do
-      for c <- 0..(col_count - 1),
-          do: if(MapSet.member?(coords, {r, c}), do: "#", else: "."),
-          into: ""
-    end
+    0..(row_count - 1)
+    |> Stream.map(fn row ->
+      0..(col_count - 1)
+      |> Stream.map(&if(MapSet.member?(coords, {row, &1}), do: "#", else: "."))
+      |> Enum.join()
+    end)
     |> Enum.join("\n")
   end
 
